@@ -1,0 +1,126 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    input {
+      -webkit-appearance: none;
+      background-color: #fff;
+      background-image: none;
+      border-radius: 4px;
+      border: 1px solid #dcdfe6;
+      box-sizing: border-box;
+      color: #606266;
+      display: inline-block;
+      font-size: inherit;
+      height: 40px;
+      line-height: 40px;
+      outline: none;
+      padding: 0 15px;
+      transition: border-color .2s cubic-bezier(.645,.045,.355,1);
+      width: 380px;
+    }
+    button {
+      display: inline-block;
+      line-height: 1;
+      white-space: nowrap;
+      cursor: pointer;
+      background: #fff;
+      border: 1px solid #dcdfe6;
+      color: #606266;
+      -webkit-appearance: none;
+      text-align: center;
+      box-sizing: border-box;
+      outline: none;
+      margin: 0;
+      transition: .1s;
+      font-weight: 500;
+      -moz-user-select: none;
+      -webkit-user-select: none;
+      -ms-user-select: none;
+      padding: 12px 20px;
+      font-size: 14px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div style="margin: 100px auto;width: 500px;">
+    <div style="display:flex;flex:1;align-items: center;">
+      请求页面地址：<input id="url" value="https://www.11467.com/zhengzhou/dir/c15.htm" type="text">
+    </div>
+    <div style="display:flex;flex:1;align-items: center;margin-top: 20px;">
+      保存文件名称：<input id="filename" value="xlsx-1" type="text">
+    </div>
+    <div style="display:flex;flex:1;align-items: center;margin-top: 20px;color:red;">
+      数据抓取过程中，请勿刷新页面重复抓取，否则会中断操作
+    </div>
+    <div style="display:flex;align-items: center;margin-top: 50px;">
+      <button id="btn"">确定</button>
+      <button id="preview"">预览已保存数据</button>
+      <span id="process" style="margin-left: 30px;">当前进度: 0/0</span>
+    </div>
+    <div>
+      <table></table>
+    </div>
+  </div>
+  <script src="/javascripts/axios.js"></script>
+  <script>
+    var btn = document.getElementById('btn')
+    var val = document.getElementById('url')
+    var fileName = document.getElementById('filename')
+    var process = document.getElementById('process')
+    var preview = document.getElementById('preview')
+    var timer = null;
+    function getProcess() {
+      axios({
+        methods: 'get',
+        url: '/api/procecss'
+      }).then(res => {
+        if(res.data.code !== 200) {
+          alert(res.err)
+          clearTimeout(timer)
+          return;
+        }
+        timer = setTimeout(() => {
+          if(!res.data.data.classLoadComplete) {
+            process.innerText = `正在获取当前数据总数，请稍后...，进度${(res.data.data.page/res.data.data.pageTotal*100).toFixed(1)}%`
+          } else {
+            process.innerText = `进度：${res.data.data.current}/${res.data.data.total}`
+          }
+          getProcess()
+        }, 3000);
+        
+      })
+    }
+    btn.onclick = function() {
+      axios({
+        methods: 'get',
+        url: '/api/start',
+        params: { url: val.value, fileName: fileName.value}
+      }).then(res => {
+        btn.setAttribute('disabled', true)
+        process.innerText = '正在获取当前数据总数，请稍后...'
+        getProcess()
+      })
+    }
+    preview.onclick = function() {
+      axios({
+          method: 'get',
+          url: `/excel/${fileName.value}.xlsx`,
+          responseType: 'blob'
+      }).then(res => {
+          const blob = new Blob([res.data], { type: 'application/vnd.ms-excel' })
+          const link = document.createElement('a')
+          link.href = window.URL.createObjectURL(blob)
+          link.download = `/excel/${fileName.value}.xlsx`
+          link.click()
+      }).catch(err => alert(err))
+    }
+  </script>
+</body>
+</html>
